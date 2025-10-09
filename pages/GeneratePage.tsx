@@ -1,0 +1,244 @@
+import React, { useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useDomain } from '../context/DomainContext';
+import { useUser } from '../context/UserContext';
+import { useToast } from '../context/ToastContext';
+import { generateDomains } from '../services/geminiService';
+import { checkAvailability, checkMultipleAvailability } from '../services/domainApiService';
+import type { DomainSuggestion } from '../types';
+import { TLD_OPTIONS, AFFILIATE_LINKS } from '../constants';
+
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import { StarIcon as StarIconSolid, ChevronDownIcon } from '@heroicons/react/24/solid';
+import { StarIcon as StarIconOutline } from '@heroicons/react/24/outline';
+
+const DomainResultCard: React.FC<{ domain: DomainSuggestion, onToggleFavorite: (name: string) => void, onAnalyze: (name: string) => void }> = ({ domain, onToggleFavorite, onAnalyze }) => {
+  const getAffiliateLink = (provider: keyof typeof AFFILIATE_LINKS) => {
+    return AFFILIATE_LINKS[provider].replace('{{domain}}', domain.name);
+  };
+
+  const buttonClasses = "inline-flex items-center justify-center rounded-md font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-brand-dark transition-all duration-200 ease-in-out";
+  const primaryButtonClasses = "bg-gradient-to-r from-indigo-500 to-cyan-500 text-white hover:from-indigo-600 hover:to-cyan-600 focus:ring-indigo-500";
+  const smallSizeClasses = "px-2 py-1 text-sm";
+
+  return (
+    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-brand-gray/30 rounded-lg animate-fade-in">
+      <div className="flex items-center">
+        <button onClick={() => onToggleFavorite(domain.name)} className="group mr-4 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-brand-light-gray transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-brand-gray focus:ring-yellow-500" aria-label={`Favorite ${domain.name}`}>
+          {domain.isFavorited ? 
+            <StarIconSolid className="w-6 h-6 text-yellow-400 transition-colors duration-200" /> : 
+            <StarIconOutline className="w-6 h-6 text-gray-400 dark:text-gray-400 group-hover:text-yellow-400 transition-colors duration-200" />
+          }
+        </button>
+        <span className="font-mono text-lg text-gray-900 dark:text-white">{domain.name}</span>
+      </div>
+      <div className="flex items-center space-x-2">
+        {domain.status === 'pending' ? (
+          <div className="h-2.5 w-16 bg-gray-200 dark:bg-brand-light-gray rounded-full animate-pulse"></div>
+        ) : domain.status === 'available' ? (
+          <>
+            <a href={getAffiliateLink('GODADDY')} target="_blank" rel="noopener noreferrer" className={`${buttonClasses} ${primaryButtonClasses} ${smallSizeClasses}`}>
+              Buy Now
+            </a>
+            <Button onClick={() => onAnalyze(domain.name)} size="sm" variant="secondary">Analyze</Button>
+          </>
+        ) : ( // 'taken'
+          <>
+            <span className="text-sm font-semibold text-red-500 dark:text-red-400">Taken</span>
+            <Button onClick={() => onAnalyze(domain.name)} size="sm" variant="secondary">Analyze</Button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const GeneratePage: React.FC = () => {
+  const navigate = useNavigate();
+  const { suggestions, setSuggestions, toggleFavorite } = useDomain();
+  const { user, useGeneration } = useUser();
+  const { showToast } = useToast();
+
+  const [prompt, setPrompt] = useState('');
+  const [style, setStyle] = useState('Brandable');
+  const [selectedTlds, setSelectedTlds] = useState<string[]>(['.com']);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isHowToOpen, setIsHowToOpen] = useState(false);
+
+  const [manualDomain, setManualDomain] = useState('');
+  const [manualDomainStatus, setManualDomainStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  
+  const handleTldChange = (tld: string) => {
+    setSelectedTlds(prev => 
+      prev.includes(tld) ? prev.filter(t => t !== tld) : [...prev, tld]
+    );
+  };
+
+  const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setPrompt(e.target.value);
+  }
+  
+  const runGeneration = useCallback(async (isMore = false) => {
+    if (!prompt.trim()) {
+      showToast('error', 'Please enter a prompt describing your idea.');
+      return;
+    }
+    if (selectedTlds.length === 0) {
+      showToast('error', 'Please select at least one TLD.');
+      return;
+    }
+    
+    if (!user.isPro && user.generationsLeft <= 0 && !isMore) {
+        showToast('error', "You've run out of free generations. Please upgrade to Pro.");
+        return;
+    }
+    
+    isMore ? setIsLoadingMore(true) : setIsLoading(true);
+
+    try {
+      const newSuggestions = await generateDomains(prompt, style, selectedTlds);
+      if (!isMore) {
+          useGeneration();
+      }
+      
+      const updatedSuggestions = newSuggestions.map(s => ({...s, isFavorited: false, status: 'pending' as const}));
+
+      setSuggestions(prev => isMore ? [...prev, ...updatedSuggestions] : updatedSuggestions);
+
+      // Check availability in the background
+      const domainNames = newSuggestions.map(s => s.name);
+      checkMultipleAvailability(domainNames).then(availabilityResults => {
+          setSuggestions(currentSuggestions => 
+              currentSuggestions.map(s => 
+                  availabilityResults[s.name] !== undefined 
+                      ? { ...s, status: availabilityResults[s.name] ? 'available' : 'taken' }
+                      : s
+              )
+          );
+      });
+      
+    } catch (err) {
+      showToast('error', 'AI failed to generate domains. Please try again later.');
+      console.error(err);
+    } finally {
+      isMore ? setIsLoadingMore(false) : setIsLoading(false);
+    }
+  }, [prompt, style, selectedTlds, setSuggestions, user, useGeneration, showToast]);
+
+
+  const handleManualCheck = async () => {
+    if (!manualDomain.trim()) return;
+    setManualDomainStatus('checking');
+    const isAvailable = await checkAvailability(manualDomain.trim());
+    setManualDomainStatus(isAvailable ? 'available' : 'taken');
+  };
+
+  const formInputClasses = "w-full bg-gray-50 dark:bg-brand-dark border border-gray-300 dark:border-brand-light-gray rounded-md px-3 py-2 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow";
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <Card className="mb-8">
+        <div className="mb-4">
+          <button onClick={() => setIsHowToOpen(!isHowToOpen)} className="flex items-center justify-between w-full text-left text-lg font-semibold text-gray-800 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-brand-gray focus:ring-indigo-500 rounded-md p-1">
+            How to Use
+            <ChevronDownIcon className={`w-5 h-5 transition-transform ${isHowToOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {isHowToOpen && (
+            <div className="mt-3 text-sm text-gray-500 dark:text-gray-400 space-y-2 pl-2 border-l-2 border-gray-200 dark:border-brand-light-gray">
+              <p><strong>1. Enter Your Prompt:</strong> Describe your business, product, or idea in the text area.</p>
+              <p><strong>2. Choose a Style:</strong> Select a generation style that fits your brand (e.g., Brandable, Modern).</p>
+              <p><strong>3. Select TLDs:</strong> Pick the domain extensions you're interested in (like .com, .ai).</p>
+              <p><strong>4. Generate:</strong> Hit the generate button and let the AI create a list of names for you.</p>
+              <p><strong>5. Analyze & Favorite:</strong> Click 'Analyze' for an in-depth report or the star to save domains to your dashboard.</p>
+            </div>
+          )}
+        </div>
+        
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="prompt" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Your Prompt</label>
+            <textarea id="prompt" value={prompt} onChange={handlePromptChange} placeholder="e.g., A SaaS for managing online courses" rows={3} className={formInputClasses}></textarea>
+          </div>
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+               <div>
+                 <label htmlFor="style" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Style</label>
+                 <select id="style" value={style} onChange={e => setStyle(e.target.value)} className={formInputClasses}>
+                    <option>Brandable</option>
+                    <option>Modern</option>
+                    <option>Luxury</option>
+                    <option>Techy</option>
+                    <option>Two-word</option>
+                 </select>
+               </div>
+           </div>
+          <div>
+             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Top-Level Domains (TLDs)</label>
+             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                {TLD_OPTIONS.map(tld => (
+                  <button key={tld} onClick={() => handleTldChange(tld)} className={`px-3 py-2 text-sm rounded-md transition-colors border ${selectedTlds.includes(tld) ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-gray-100 dark:bg-brand-gray border-gray-300 dark:border-brand-light-gray text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-brand-light-gray'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-brand-gray focus:ring-indigo-500`}>
+                    {tld}
+                  </button>
+                ))}
+             </div>
+          </div>
+          <div>
+            <Button onClick={() => runGeneration(false)} isLoading={isLoading} disabled={isLoading} className="w-full mt-2">
+              Generate Domains
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      {isLoading && <div className="text-center p-8">Loading suggestions...</div>}
+      
+      {suggestions.length > 0 && (
+        <>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Generated Domains</h2>
+            <div className="space-y-3">
+              {suggestions.map((domain, index) => (
+                <DomainResultCard key={`${domain.name}-${index}`} domain={domain} onToggleFavorite={toggleFavorite} onAnalyze={(name) => navigate(`/analyze/${name}`)} />
+              ))}
+            </div>
+             <div className="mt-6 text-center">
+                <Button onClick={() => runGeneration(true)} isLoading={isLoadingMore} disabled={isLoadingMore} variant="secondary">
+                  Generate More
+                </Button>
+             </div>
+        </>
+      )}
+
+      <Card className="mt-8">
+        <h3 className="text-lg font-semibold mb-2">Check a Specific Domain</h3>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            type="text"
+            value={manualDomain}
+            onChange={(e) => {
+              setManualDomain(e.target.value);
+              setManualDomainStatus('idle');
+            }}
+            onKeyDown={(e) => e.key === 'Enter' && handleManualCheck()}
+            placeholder="e.g., myidea.com"
+            className={`flex-grow ${formInputClasses}`}
+          />
+          <Button onClick={handleManualCheck} isLoading={manualDomainStatus === 'checking'} disabled={!manualDomain.trim()} className="sm:w-auto">
+            Check Availability
+          </Button>
+        </div>
+        {manualDomainStatus !== 'idle' && manualDomainStatus !== 'checking' && (
+          <div className="mt-3 text-center">
+            {manualDomainStatus === 'available' ? (
+              <p className="text-green-600 dark:text-green-400">The domain <span className="font-bold">{manualDomain}</span> is available!</p>
+            ) : (
+              <p className="text-red-600 dark:text-red-400">The domain <span className="font-bold">{manualDomain}</span> is taken.</p>
+            )}
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+};
+
+export default GeneratePage;
