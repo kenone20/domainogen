@@ -5,7 +5,7 @@ import { useUser } from '../context/UserContext';
 import { useToast } from '../context/ToastContext';
 import { useHistory } from '../context/HistoryContext';
 import { generateDomains } from '../services/geminiService';
-import { checkAvailability, checkMultipleAvailability } from '../services/domainApiService';
+import { checkMultipleAvailability } from '../services/domainApiService';
 import type { DomainSuggestion } from '../types';
 import { TLD_OPTIONS, AFFILIATE_LINKS } from '../constants';
 
@@ -69,7 +69,6 @@ const GeneratePage: React.FC = () => {
 
   const [manualDomain, setManualDomain] = useState('');
   const [isManualChecking, setIsManualChecking] = useState(false);
-  const [manualResult, setManualResult] = useState<DomainSuggestion | null>(null);
   
   const handleTldChange = (tld: string) => {
     setSelectedTlds(prev => 
@@ -136,35 +135,21 @@ const GeneratePage: React.FC = () => {
   }, [prompt, style, selectedTlds, setSuggestions, useGeneration, showToast, addGenerationToHistory, favorites]);
 
 
-  const handleManualCheck = async () => {
+  const handleManualCheck = () => {
     const domainToCheck = manualDomain.trim().toLowerCase();
-    if (!domainToCheck) return;
+    if (!domainToCheck) {
+      showToast('error', 'Please enter a domain name.');
+      return;
+    }
+    if (!domainToCheck.includes('.')) {
+      showToast('error', 'Please include a TLD, like .com or .ai');
+      return;
+    }
     
     setIsManualChecking(true);
-    setManualResult(null);
-
-    try {
-        const isAvailable = await checkAvailability(domainToCheck);
-        const isFavorited = favorites.some(fav => fav.name === domainToCheck);
-        setManualResult({
-            name: domainToCheck,
-            status: isAvailable ? 'available' : 'taken',
-            isFavorited: isFavorited
-        });
-    } catch (error) {
-        showToast('error', 'Could not check domain availability.');
-    } finally {
-        setIsManualChecking(false);
-    }
-  };
-
-  const handleToggleFavoriteManualResult = () => {
-    if (!manualResult) return;
-    // Create a new object with the toggled favorite state for local UI update
-    const updatedResult = { ...manualResult, isFavorited: !manualResult.isFavorited };
-    setManualResult(updatedResult);
-    // Call the global context function to update the main favorites list
-    toggleFavorite(manualResult);
+    // Navigate directly to the analysis page for a full report.
+    // The analysis page will handle loading and fetching all data.
+    navigate(`/analyze/${domainToCheck}`);
   };
 
 
@@ -243,29 +228,20 @@ const GeneratePage: React.FC = () => {
       )}
 
       <Card className="mt-8">
-        <h3 className="text-lg font-semibold mb-2">Check a Specific Domain</h3>
+        <h3 className="text-lg font-semibold mb-2">Analyze a Specific Domain</h3>
         <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="text"
             value={manualDomain}
-            onChange={(e) => {
-              setManualDomain(e.target.value);
-              setManualResult(null);
-            }}
+            onChange={(e) => setManualDomain(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleManualCheck()}
-            placeholder="e.g., myidea.com"
+            placeholder="e.g., mygreatidea.com"
             className={`flex-grow ${formInputClasses}`}
           />
           <Button onClick={handleManualCheck} isLoading={isManualChecking} disabled={!manualDomain.trim()} className="sm:w-auto">
-            Check Availability
+            Analyze Domain
           </Button>
         </div>
-        {isManualChecking && <div className="text-center p-4">Checking...</div>}
-        {manualResult && !isManualChecking && (
-          <div className="mt-4">
-             <DomainResultCard domain={manualResult} onToggleFavorite={handleToggleFavoriteManualResult} onAnalyze={(name) => navigate(`/analyze/${name}`)} />
-          </div>
-        )}
       </Card>
     </div>
   );

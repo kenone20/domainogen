@@ -127,20 +127,27 @@ export const analyzeDomain = async (domain: string): Promise<DomainAnalysis> => 
     // Fetch domain age first to include it in the analysis prompt
     const age = await getDomainAge(domain);
 
-    const prompt = `Act as a professional domain name appraiser and branding consultant with 15 years of experience. Provide a comprehensive, data-driven analysis for the domain name "${domain}". The domain's registration age is: "${age}".
-    Your response must be a valid JSON object.
-    
-    - "brandability": A score from 1-10. Justify it based on memorability, length, spelling difficulty, and overall catchiness.
-    - "brandabilityJustification": A short sentence explaining the brandability score.
-    - "seoStrength": A score from 1-10. Justify it based on relevant keywords, TLD authority (.com is high), and brandability. Consider the domain's age in your assessment.
-    - "seoStrengthJustification": A short sentence explaining the SEO strength score.
-    - "estimatedValue": An estimated monetary value in USD (integer). Base this on TLD value, keyword strength, length, memorability, commercial potential, and the provided domain age. For "New" domains, this is potential registration value; for aged domains, it's aftermarket value.
-    - "summary": A concise, insightful summary highlighting the domain's primary strengths and weaknesses.
-    - "tagline": A creative and brand-appropriate tagline.
-    - "logoPrompt": A detailed, descriptive prompt for an AI image generator (like Imagen) to create a modern, professional logo. The prompt should result in a simple, vector-style logo suitable for a website or app icon. It should be specific, mentioning a central, clean graphic element. Example: 'minimalist vector logo of a stylized phoenix, clean lines, vibrant gradient, professional, on a white background'.
-    - "colorPalette": An array of exactly 4 complementary hex color codes for a brand palette.
-    - "risks": A brief sentence on potential downsides (e.g., hard to spell, potential trademark conflicts, too niche).
-    - "alternativeSuggestions": An array of 3-5 similar, high-quality domain names that are likely to be available.`;
+    const prompt = `Act as a seasoned domain name appraiser and digital asset strategist. Your task is to conduct a rigorous, professional analysis of the domain "${domain}", treating it as a significant business investment. The domain's registration age is "${age}".
+
+    Your analysis must be data-driven and impartial. Critically evaluate the domain based on the following core pillars:
+    1.  **Commercial Potential & Keyword Strength:** How valuable are the keywords? Do they target a high-value niche?
+    2.  **TLD Authority:** How does the TLD (.com, .io, .ai, etc.) impact trust, value, and target audience perception?
+    3.  **Brandability:** Is it memorable, pronounceable, and unique?
+    4.  **Domain Age:** The provided age is a critical factor for SEO trust and valuation.
+
+    Your response MUST be a valid JSON object with the following strict structure:
+
+    - "brandability": A score from 1-10.
+    - "brandabilityJustification": A detailed justification for the brandability score. Directly reference its memorability, length, and potential for brand recognition.
+    - "seoStrength": A score from 1-10.
+    - "seoStrengthJustification": A detailed justification for the SEO score. Your reasoning must explicitly incorporate the domain's age, keyword relevance, and the TLD's authority in search engine rankings.
+    - "estimatedValue": An estimated monetary value in USD (integer). This valuation must be primarily driven by the domain's age and TLD, followed by its commercial keyword potential. An older domain with strong keywords is exponentially more valuable.
+    - "summary": A professional summary evaluating the domain as a digital asset, balancing its strengths against its weaknesses.
+    - "tagline": A creative, brand-appropriate tagline.
+    - "logoPrompt": A highly descriptive prompt for an AI image generator to create a modern, minimalist, vector-style logo suitable for a favicon. Describe a simple graphic element and incorporate the generated color palette. Example: 'a clean, modern vector logo of an abstract geometric bird in flight, using shades of indigo and cyan, minimalist design, sharp lines, on a pure white background'.
+    - "colorPalette": An array of exactly 4 complementary hex color codes.
+    - "risks": A mandatory sentence identifying at least one potential risk (e.g., 'The .co TLD can be mistaken for .com by users,' 'The name is difficult to spell,' 'Potential trademark conflicts with existing brands'). This field cannot be empty.
+    - "alternativeSuggestions": An array of 3-5 similar, high-quality domain names.`;
 
     try {
         const analysisResponse = await ai.models.generateContent({

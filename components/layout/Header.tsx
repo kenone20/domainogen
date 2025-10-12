@@ -38,6 +38,7 @@ const Header: React.FC = () => {
                                 <NavLink to="/generate">Generate</NavLink>
                                 <NavLink to="/pricing">Pricing</NavLink>
                                 <NavLink to="/dashboard">Dashboard</NavLink>
+                                <NavLink to="/about">About</NavLink>
                             </div>
                         </nav>
                     </div>

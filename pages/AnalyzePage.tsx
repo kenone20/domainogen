@@ -19,7 +19,8 @@ const StatCard: React.FC<{
   description: string;
   score?: number;
   maxScore?: number;
-}> = ({ title, value, description, score, maxScore = 10 }) => {
+  isJustification?: boolean;
+}> = ({ title, value, description, score, maxScore = 10, isJustification = false }) => {
   const progressBarRef = useRef<HTMLDivElement>(null);
   const [animatedScore, setAnimatedScore] = useState(0);
 
@@ -64,7 +65,9 @@ const StatCard: React.FC<{
         <p className="text-4xl font-bold text-gray-900 dark:text-white my-2 tabular-nums">
           {displayValue}
         </p>
-        <p className="text-xs text-gray-500 dark:text-gray-400 min-h-[2.5rem]">{description}</p>
+        <p className={`text-xs text-gray-500 dark:text-gray-400 min-h-[2.5rem] ${isJustification ? 'italic' : ''}`}>
+          {isJustification ? `"${description}"` : description}
+        </p>
       </div>
       {score !== undefined && (
         <div className="mt-auto pt-2">
@@ -210,8 +213,8 @@ const AnalyzePage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <StatCard title="Brandability" value={`${brandability}/10`} description={brandabilityJustification} score={brandability} />
-            <StatCard title="SEO Strength" value={`${seoStrength}/10`} description={seoStrengthJustification} score={seoStrength} />
+            <StatCard title="Brandability" value={`${brandability}/10`} description={brandabilityJustification} score={brandability} isJustification={true} />
+            <StatCard title="SEO Strength" value={`${seoStrength}/10`} description={seoStrengthJustification} score={seoStrength} isJustification={true} />
             <StatCard title="Domain Age" value={domainAge} description="How long the domain has been registered." />
             <StatCard title="Estimated Value" value={`$${estimatedValue.toLocaleString()}`} description="AI-powered market value appraisal." />
         </div>
