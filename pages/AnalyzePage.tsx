@@ -20,22 +20,49 @@ const StatCard: React.FC<{
   maxScore?: number;
 }> = ({ title, value, description, score, maxScore = 10 }) => {
   const progressBarRef = useRef<HTMLDivElement>(null);
+  const [animatedScore, setAnimatedScore] = useState(0);
 
   useEffect(() => {
     // Animate the progress bar on mount
-    const timer = setTimeout(() => {
+    const barTimer = setTimeout(() => {
       if (progressBarRef.current && score !== undefined) {
         progressBarRef.current.style.width = `${(score / maxScore) * 100}%`;
       }
-    }, 100); // Small delay to allow initial render
-    return () => clearTimeout(timer);
+    }, 100);
+
+    // Animate the score number
+    let numberTimer: number | undefined;
+    if (score !== undefined) {
+      setAnimatedScore(0); // Start animation from 0
+      if (score > 0) {
+        const duration = 1000; // Match the progress bar's duration
+        const stepTime = Math.floor(duration / score);
+        let current = 0;
+        numberTimer = window.setInterval(() => {
+          current += 1;
+          setAnimatedScore(current);
+          if (current >= score) {
+            clearInterval(numberTimer);
+          }
+        }, stepTime);
+      }
+    }
+    
+    return () => {
+      clearTimeout(barTimer);
+      if (numberTimer) clearInterval(numberTimer);
+    };
   }, [score, maxScore]);
+
+  const displayValue = score !== undefined ? `${animatedScore}/${maxScore}` : value;
 
   return (
     <Card className="text-center flex flex-col">
       <div className="flex-grow">
         <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
-        <p className="text-4xl font-bold text-gray-900 dark:text-white my-2">{value}</p>
+        <p className="text-4xl font-bold text-gray-900 dark:text-white my-2 tabular-nums">
+          {displayValue}
+        </p>
         <p className="text-xs text-gray-500 dark:text-gray-400 min-h-[2.5rem]">{description}</p>
       </div>
       {score !== undefined && (
@@ -157,7 +184,7 @@ const AnalyzePage: React.FC = () => {
   }
   
   const { brandability, seoStrength, estimatedValue, summary, logoSuggestion, colorPalette, tagline, domainAge } = currentAnalysis;
-  const goDaddyLink = AFFILIATE_LINKS.GODADDY.replace('{{domain}}', domain);
+  const namecheapLink = AFFILIATE_LINKS.NAMECHEAP.replace('{{domain}}', domain);
 
   return (
     <>
@@ -222,8 +249,8 @@ const AnalyzePage: React.FC = () => {
             <h3 className="text-xl font-semibold mb-4 text-indigo-500 dark:text-indigo-400">Next Steps</h3>
             <div className="space-y-4">
               <p className="text-gray-700 dark:text-gray-300">Ready to make this domain yours?</p>
-              <a href={goDaddyLink} target="_blank" rel="noopener noreferrer">
-                <Button className="w-full">Purchase on GoDaddy</Button>
+              <a href={namecheapLink} target="_blank" rel="noopener noreferrer">
+                <Button className="w-full">Purchase on Namecheap</Button>
               </a>
                <Button 
                   variant="secondary" 

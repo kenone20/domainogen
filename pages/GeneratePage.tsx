@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDomain } from '../context/DomainContext';
 import { useUser } from '../context/UserContext';
@@ -14,7 +14,7 @@ import Card from '../components/ui/Card';
 import { StarIcon as StarIconSolid, ChevronDownIcon } from '@heroicons/react/24/solid';
 import { StarIcon as StarIconOutline } from '@heroicons/react/24/outline';
 
-const DomainResultCard: React.FC<{ domain: DomainSuggestion, onToggleFavorite: (name: string) => void, onAnalyze: (name: string) => void }> = ({ domain, onToggleFavorite, onAnalyze }) => {
+const DomainResultCard: React.FC<{ domain: DomainSuggestion, onToggleFavorite: (domain: DomainSuggestion) => void, onAnalyze: (name: string) => void }> = ({ domain, onToggleFavorite, onAnalyze }) => {
   const getAffiliateLink = (provider: keyof typeof AFFILIATE_LINKS) => {
     return AFFILIATE_LINKS[provider].replace('{{domain}}', domain.name);
   };
@@ -26,7 +26,7 @@ const DomainResultCard: React.FC<{ domain: DomainSuggestion, onToggleFavorite: (
   return (
     <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-brand-gray/30 rounded-lg animate-fade-in">
       <div className="flex items-center">
-        <button onClick={() => onToggleFavorite(domain.name)} className="group mr-4 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-brand-light-gray transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-brand-gray focus:ring-yellow-500" aria-label={`Favorite ${domain.name}`}>
+        <button onClick={() => onToggleFavorite(domain)} className="group mr-4 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-brand-light-gray transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-brand-gray focus:ring-yellow-500" aria-label={`Favorite ${domain.name}`}>
           {domain.isFavorited ? 
             <StarIconSolid className="w-6 h-6 text-yellow-400 transition-colors duration-200" /> : 
             <StarIconOutline className="w-6 h-6 text-gray-400 dark:text-gray-400 group-hover:text-yellow-400 transition-colors duration-200" />
@@ -37,12 +37,12 @@ const DomainResultCard: React.FC<{ domain: DomainSuggestion, onToggleFavorite: (
       <div className="flex items-center space-x-2">
         {domain.status === 'available' ? (
           <>
-            <a href={getAffiliateLink('GODADDY')} target="_blank" rel="noopener noreferrer" className={`${buttonClasses} ${primaryButtonClasses} ${smallSizeClasses}`}>
+            <a href={getAffiliateLink('NAMECHEAP')} target="_blank" rel="noopener noreferrer" className={`${buttonClasses} ${primaryButtonClasses} ${smallSizeClasses}`}>
               Buy Now
             </a>
             <Button onClick={() => onAnalyze(domain.name)} size="sm" variant="secondary">Analyze</Button>
           </>
-        ) : ( // 'taken' or 'pending', though 'taken' shouldn't appear in the main list anymore
+        ) : (
           <>
             <span className="text-sm font-semibold text-red-500 dark:text-red-400 capitalize">{domain.status}</span>
             <Button onClick={() => onAnalyze(domain.name)} size="sm" variant="secondary">Analyze</Button>
@@ -55,7 +55,7 @@ const DomainResultCard: React.FC<{ domain: DomainSuggestion, onToggleFavorite: (
 
 const GeneratePage: React.FC = () => {
   const navigate = useNavigate();
-  const { suggestions, setSuggestions, toggleFavorite } = useDomain();
+  const { suggestions, setSuggestions, toggleFavorite, favorites } = useDomain();
   const { useGeneration } = useUser();
   const { showToast } = useToast();
   const { addGenerationToHistory } = useHistory();
@@ -68,7 +68,8 @@ const GeneratePage: React.FC = () => {
   const [isHowToOpen, setIsHowToOpen] = useState(false);
 
   const [manualDomain, setManualDomain] = useState('');
-  const [manualDomainStatus, setManualDomainStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const [isManualChecking, setIsManualChecking] = useState(false);
+  const [manualResult, setManualResult] = useState<DomainSuggestion | null>(null);
   
   const handleTldChange = (tld: string) => {
     setSelectedTlds(prev => 
@@ -93,24 +94,20 @@ const GeneratePage: React.FC = () => {
     isMore ? setIsLoadingMore(true) : setIsLoading(true);
 
     try {
-      // Step 1: Generate domain suggestions from the AI.
       const newSuggestions = await generateDomains(prompt, style, selectedTlds);
       useGeneration();
 
-      // Step 2: Check availability for all generated domains.
       const domainNames = newSuggestions.map(s => s.name);
       const availabilityResults = await checkMultipleAvailability(domainNames);
       
-      // Step 3: Filter out taken domains to only show available ones.
       const availableSuggestions = newSuggestions
         .filter(s => availabilityResults[s.name])
-        .map(s => ({ ...s, isFavorited: false, status: 'available' as const }));
+        .map(s => ({ ...s, isFavorited: favorites.some(f => f.name === s.name), status: 'available' as const }));
 
       if (newSuggestions.length > 0 && availableSuggestions.length === 0) {
         showToast('info', 'AI generated some domains, but they were all taken. Try generating more or adjusting your prompt!');
       }
 
-      // Step 4: Log the complete generation attempt to history (including taken domains).
       if (!isMore) {
         const allSuggestionsWithStatus = newSuggestions.map(s => ({
             ...s,
@@ -128,7 +125,6 @@ const GeneratePage: React.FC = () => {
         });
       }
 
-      // Step 5: Update the UI with only the available domains.
       setSuggestions(prev => isMore ? [...prev, ...availableSuggestions] : availableSuggestions);
       
     } catch (err) {
@@ -137,15 +133,40 @@ const GeneratePage: React.FC = () => {
     } finally {
       isMore ? setIsLoadingMore(false) : setIsLoading(false);
     }
-  }, [prompt, style, selectedTlds, setSuggestions, useGeneration, showToast, addGenerationToHistory]);
+  }, [prompt, style, selectedTlds, setSuggestions, useGeneration, showToast, addGenerationToHistory, favorites]);
 
 
   const handleManualCheck = async () => {
-    if (!manualDomain.trim()) return;
-    setManualDomainStatus('checking');
-    const isAvailable = await checkAvailability(manualDomain.trim());
-    setManualDomainStatus(isAvailable ? 'available' : 'taken');
+    const domainToCheck = manualDomain.trim().toLowerCase();
+    if (!domainToCheck) return;
+    
+    setIsManualChecking(true);
+    setManualResult(null);
+
+    try {
+        const isAvailable = await checkAvailability(domainToCheck);
+        const isFavorited = favorites.some(fav => fav.name === domainToCheck);
+        setManualResult({
+            name: domainToCheck,
+            status: isAvailable ? 'available' : 'taken',
+            isFavorited: isFavorited
+        });
+    } catch (error) {
+        showToast('error', 'Could not check domain availability.');
+    } finally {
+        setIsManualChecking(false);
+    }
   };
+
+  const handleToggleFavoriteManualResult = () => {
+    if (!manualResult) return;
+    // Create a new object with the toggled favorite state for local UI update
+    const updatedResult = { ...manualResult, isFavorited: !manualResult.isFavorited };
+    setManualResult(updatedResult);
+    // Call the global context function to update the main favorites list
+    toggleFavorite(manualResult);
+  };
+
 
   const formInputClasses = "w-full bg-gray-50 dark:bg-brand-dark border border-gray-300 dark:border-brand-light-gray rounded-md px-3 py-2 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow";
 
@@ -229,23 +250,20 @@ const GeneratePage: React.FC = () => {
             value={manualDomain}
             onChange={(e) => {
               setManualDomain(e.target.value);
-              setManualDomainStatus('idle');
+              setManualResult(null);
             }}
             onKeyDown={(e) => e.key === 'Enter' && handleManualCheck()}
             placeholder="e.g., myidea.com"
             className={`flex-grow ${formInputClasses}`}
           />
-          <Button onClick={handleManualCheck} isLoading={manualDomainStatus === 'checking'} disabled={!manualDomain.trim()} className="sm:w-auto">
+          <Button onClick={handleManualCheck} isLoading={isManualChecking} disabled={!manualDomain.trim()} className="sm:w-auto">
             Check Availability
           </Button>
         </div>
-        {manualDomainStatus !== 'idle' && manualDomainStatus !== 'checking' && (
-          <div className="mt-3 text-center">
-            {manualDomainStatus === 'available' ? (
-              <p className="text-green-600 dark:text-green-400">The domain <span className="font-bold">{manualDomain}</span> is available!</p>
-            ) : (
-              <p className="text-red-600 dark:text-red-400">The domain <span className="font-bold">{manualDomain}</span> is taken.</p>
-            )}
+        {isManualChecking && <div className="text-center p-4">Checking...</div>}
+        {manualResult && !isManualChecking && (
+          <div className="mt-4">
+             <DomainResultCard domain={manualResult} onToggleFavorite={handleToggleFavoriteManualResult} onAnalyze={(name) => navigate(`/analyze/${name}`)} />
           </div>
         )}
       </Card>

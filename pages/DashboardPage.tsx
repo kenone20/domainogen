@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDomain } from '../context/DomainContext';
 import { useHistory } from '../context/HistoryContext';
-import type { GenerationHistoryItem, AnalysisHistoryItem } from '../types';
+import type { GenerationHistoryItem, AnalysisHistoryItem, DomainSuggestion } from '../types';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import { TrashIcon, ClockIcon, LightBulbIcon, DocumentTextIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
@@ -156,7 +156,7 @@ const DashboardPage: React.FC = () => {
                                 <Button variant="secondary" size="sm" onClick={() => navigate(`/analyze/${domain.name}`)}>
                                 View Analysis
                                 </Button>
-                                <Button variant="ghost" size="sm" onClick={() => toggleFavorite(domain.name)}>
+                                <Button variant="ghost" size="sm" onClick={() => toggleFavorite(domain)}>
                                 Remove
                                 </Button>
                             </div>

@@ -6,7 +6,7 @@ interface DomainContextType {
   favorites: DomainSuggestion[];
   currentAnalysis: DomainAnalysis | null;
   setSuggestions: React.Dispatch<React.SetStateAction<DomainSuggestion[]>>;
-  toggleFavorite: (domainName: string) => void;
+  toggleFavorite: (domain: DomainSuggestion) => void;
   setCurrentAnalysis: (analysis: DomainAnalysis | null) => void;
 }
 
@@ -17,24 +17,21 @@ export const DomainProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [favorites, setFavorites] = useState<DomainSuggestion[]>([]);
   const [currentAnalysis, setCurrentAnalysis] = useState<DomainAnalysis | null>(null);
 
-  const toggleFavorite = useCallback((domainName: string) => {
+  const toggleFavorite = useCallback((domainToToggle: DomainSuggestion) => {
     setFavorites(prev => {
-      const isFavorited = prev.some(d => d.name === domainName);
+      const isFavorited = prev.some(d => d.name === domainToToggle.name);
       if (isFavorited) {
-        return prev.filter(d => d.name !== domainName);
+        return prev.filter(d => d.name !== domainToToggle.name);
       } else {
-        const domainToAdd = suggestions.find(d => d.name === domainName) 
-            || favorites.find(d => d.name === domainName); // Also check favorites list
-        
-        // When adding, ensure it has a default status if it's not in suggestions
-        return domainToAdd ? [...prev, { ...domainToAdd, isFavorited: true }] : prev;
+        // When adding, ensure it has the correct favorited status
+        return [...prev, { ...domainToToggle, isFavorited: true }];
       }
     });
 
     setSuggestions(prev => prev.map(d => 
-      d.name === domainName ? { ...d, isFavorited: !d.isFavorited } : d
+      d.name === domainToToggle.name ? { ...d, isFavorited: !d.isFavorited } : d
     ));
-  }, [suggestions, favorites]);
+  }, []);
 
   return (
     <DomainContext.Provider value={{ suggestions, favorites, currentAnalysis, setSuggestions, toggleFavorite, setCurrentAnalysis }}>
