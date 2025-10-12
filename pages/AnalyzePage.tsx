@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { useDomain } from '../context/DomainContext';
-import { useUser } from '../context/UserContext';
 import { useToast } from '../context/ToastContext';
+import { useHistory } from '../context/HistoryContext';
 import { analyzeDomain, generateImage } from '../services/geminiService';
 import type { DomainAnalysis } from '../types';
 import Card from '../components/ui/Card';
@@ -12,19 +12,57 @@ import Button from '../components/ui/Button';
 import PdfReport from '../components/ui/PdfReport';
 import { AFFILIATE_LINKS } from '../constants';
 
-const StatCard: React.FC<{ title: string; value: string | number; description: string }> = ({ title, value, description }) => (
-    <Card className="text-center">
+const StatCard: React.FC<{
+  title: string;
+  value: string | number;
+  description: string;
+  score?: number;
+  maxScore?: number;
+}> = ({ title, value, description, score, maxScore = 10 }) => {
+  const progressBarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Animate the progress bar on mount
+    const timer = setTimeout(() => {
+      if (progressBarRef.current && score !== undefined) {
+        progressBarRef.current.style.width = `${(score / maxScore) * 100}%`;
+      }
+    }, 100); // Small delay to allow initial render
+    return () => clearTimeout(timer);
+  }, [score, maxScore]);
+
+  return (
+    <Card className="text-center flex flex-col">
+      <div className="flex-grow">
         <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
         <p className="text-4xl font-bold text-gray-900 dark:text-white my-2">{value}</p>
-        <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 min-h-[2.5rem]">{description}</p>
+      </div>
+      {score !== undefined && (
+        <div className="mt-auto pt-2">
+          <div className="w-full bg-gray-200 dark:bg-brand-light-gray/50 rounded-full h-2 overflow-hidden">
+            <div
+              ref={progressBarRef}
+              className="bg-gradient-to-r from-cyan-400 to-indigo-500 h-2 rounded-full transition-all duration-1000 ease-out"
+              style={{ width: `0%` }}
+              role="progressbar"
+              aria-valuenow={score}
+              aria-valuemin={0}
+              aria-valuemax={maxScore}
+              aria-label={`${title} score: ${score} out of ${maxScore}`}
+            ></div>
+          </div>
+        </div>
+      )}
     </Card>
-);
+  );
+};
 
 const AnalyzePage: React.FC = () => {
   const { domain } = useParams<{ domain: string }>();
   const { currentAnalysis, setCurrentAnalysis } = useDomain();
-  const { user } = useUser();
   const { showToast } = useToast();
+  const { addAnalysisToHistory } = useHistory();
   const [isLoading, setIsLoading] = useState(true);
   const [isLogoLoading, setIsLogoLoading] = useState(true);
   const [logoDataUrl, setLogoDataUrl] = useState('');
@@ -44,6 +82,13 @@ const AnalyzePage: React.FC = () => {
             // Fetch analysis which contains the prompt
             const analysisData = await analyzeDomain(domain);
             setCurrentAnalysis(analysisData);
+            
+            addAnalysisToHistory({
+              id: Date.now().toString(),
+              timestamp: Date.now(),
+              analysis: analysisData,
+            });
+
             setIsLoading(false); // Analysis is loaded, main content can show
 
             // Fetch logo using the prompt from the analysis
@@ -61,7 +106,7 @@ const AnalyzePage: React.FC = () => {
     fetchAllData();
     // We only want this effect to run when the domain parameter in the URL changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [domain, showToast]);
+  }, [domain, setCurrentAnalysis, showToast, addAnalysisToHistory]);
 
   const handleDownloadPdf = async () => {
     if (!reportRef.current || !currentAnalysis) return;
@@ -127,8 +172,8 @@ const AnalyzePage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <StatCard title="Brandability" value={`${brandability}/10`} description="How memorable and catchy the name is." />
-            <StatCard title="SEO Strength" value={`${seoStrength}/10`} description="Potential for organic search traffic." />
+            <StatCard title="Brandability" value={`${brandability}/10`} description="How memorable and catchy the name is." score={brandability} />
+            <StatCard title="SEO Strength" value={`${seoStrength}/10`} description="Potential for organic search traffic." score={seoStrength} />
             <StatCard title="Domain Age" value={domainAge} description="How long the domain has been registered." />
             <StatCard title="Estimated Value" value={`$${estimatedValue.toLocaleString()}`} description="AI-powered market value appraisal." />
         </div>
@@ -183,10 +228,10 @@ const AnalyzePage: React.FC = () => {
                <Button 
                   variant="secondary" 
                   className="w-full" 
-                  disabled={!user.isPro || isGeneratingPdf}
+                  disabled={isGeneratingPdf}
                   onClick={handleDownloadPdf}
                 >
-                  {isGeneratingPdf ? 'Generating PDF...' : `Download PDF Appraisal Report ${!user.isPro ? "(Pro Only)" : ""}`}
+                  {isGeneratingPdf ? 'Generating PDF...' : 'Download PDF Appraisal Report'}
               </Button>
               <p className="text-xs text-center text-gray-500 dark:text-gray-500">
                   Purchasing through our links is a great way to support DomainOgen.

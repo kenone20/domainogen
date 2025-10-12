@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useUser } from '../../context/UserContext';
 import { useTheme } from '../../context/ThemeContext';
 import { SunIcon, MoonIcon } from '@heroicons/react/24/solid';
 
@@ -22,7 +21,6 @@ const NavLink: React.FC<{ to: string; children: React.ReactNode }> = ({ to, chil
 };
 
 const Header: React.FC = () => {
-    const { user, togglePro } = useUser();
     const { theme, toggleTheme } = useTheme();
 
     return (
@@ -44,16 +42,6 @@ const Header: React.FC = () => {
                         </nav>
                     </div>
                     <div className="flex items-center space-x-4">
-                        <div className="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
-                            {user.isPro ? (
-                                <span className="text-yellow-500 dark:text-yellow-400 font-semibold">PRO</span>
-                            ) : (
-                                <span>{user.generationsLeft} generations left</span>
-                            )}
-                        </div>
-                         <button onClick={togglePro} className="px-3 py-1 text-sm border border-yellow-500 dark:border-yellow-400 rounded-full text-yellow-600 dark:text-yellow-400 hover:bg-yellow-400 hover:text-white dark:hover:text-brand-dark transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-brand-dark focus:ring-yellow-500">
-                            {user.isPro ? 'Switch to Free' : 'Go Pro'}
-                        </button>
                         <button onClick={toggleTheme} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-brand-light-gray transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-brand-dark focus:ring-indigo-500" aria-label="Toggle theme">
                             {theme === 'light' ? <MoonIcon className="h-5 w-5" /> : <SunIcon className="h-5 w-5" />}
                         </button>

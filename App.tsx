@@ -4,6 +4,7 @@ import { UserProvider } from './context/UserContext';
 import { DomainProvider } from './context/DomainContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
+import { HistoryProvider } from './context/HistoryContext';
 
 import MainLayout from './components/layout/MainLayout';
 import HomePage from './pages/HomePage';
@@ -21,18 +22,20 @@ function App() {
       <UserProvider>
         <DomainProvider>
           <ToastProvider>
-            <MainLayout>
-              <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/generate" element={<GeneratePage />} />
-                <Route path="/analyze/:domain" element={<AnalyzePage />} />
-                <Route path="/pricing" element={<PricingPage />} />
-                <Route path="/dashboard" element={<DashboardPage />} />
-                <Route path="/about" element={<AboutPage />} />
-                <Route path="/affiliate" element={<AffiliatePage />} />
-                <Route path="/api-docs" element={<ApiDocsPage />} />
-              </Routes>
-            </MainLayout>
+            <HistoryProvider>
+              <MainLayout>
+                <Routes>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/generate" element={<GeneratePage />} />
+                  <Route path="/analyze/:domain" element={<AnalyzePage />} />
+                  <Route path="/pricing" element={<PricingPage />} />
+                  <Route path="/dashboard" element={<DashboardPage />} />
+                  <Route path="/about" element={<AboutPage />} />
+                  <Route path="/affiliate" element={<AffiliatePage />} />
+                  <Route path="/api-docs" element={<ApiDocsPage />} />
+                </Routes>
+              </MainLayout>
+            </HistoryProvider>
           </ToastProvider>
         </DomainProvider>
       </UserProvider>

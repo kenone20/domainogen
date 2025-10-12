@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode } from 'react';
 import type { UserProfile } from '../types';
 
@@ -12,19 +11,16 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile>({
-    isPro: false,
-    generationsLeft: 5,
+    isPro: true, // All features are now free, so everyone is a "Pro" user.
   });
 
+  // This function is now a no-op as there is only one free plan.
   const togglePro = () => {
-    setUser(prev => ({ ...prev, isPro: !prev.isPro }));
+    console.log("Toggling Pro is disabled. All features are currently free.");
   };
 
-  const useGeneration = () => {
-    if (!user.isPro) {
-      setUser(prev => ({...prev, generationsLeft: Math.max(0, prev.generationsLeft - 1)}));
-    }
-  };
+  // This function is now a no-op as generation limits are removed.
+  const useGeneration = () => {};
 
   return (
     <UserContext.Provider value={{ user, togglePro, useGeneration }}>

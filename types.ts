@@ -21,6 +21,24 @@ export interface DomainAnalysis {
 
 export interface UserProfile {
   isPro: boolean;
-  generationsLeft: number;
   apiKey?: string; // For demo purposes, not for production
 }
+
+export interface GenerationHistoryItem {
+  id: string;
+  timestamp: number;
+  prompt: string;
+  style: string;
+  tlds: string[];
+  suggestions: DomainSuggestion[];
+}
+
+export interface AnalysisHistoryItem {
+  id: string;
+  timestamp: number;
+  analysis: DomainAnalysis;
+}
+
+export type HistoryItem = 
+  | { type: 'generation'; data: GenerationHistoryItem }
+  | { type: 'analysis'; data: AnalysisHistoryItem };

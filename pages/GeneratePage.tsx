@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDomain } from '../context/DomainContext';
 import { useUser } from '../context/UserContext';
 import { useToast } from '../context/ToastContext';
+import { useHistory } from '../context/HistoryContext';
 import { generateDomains } from '../services/geminiService';
 import { checkAvailability, checkMultipleAvailability } from '../services/domainApiService';
 import type { DomainSuggestion } from '../types';
@@ -34,18 +35,16 @@ const DomainResultCard: React.FC<{ domain: DomainSuggestion, onToggleFavorite: (
         <span className="font-mono text-lg text-gray-900 dark:text-white">{domain.name}</span>
       </div>
       <div className="flex items-center space-x-2">
-        {domain.status === 'pending' ? (
-          <div className="h-2.5 w-16 bg-gray-200 dark:bg-brand-light-gray rounded-full animate-pulse"></div>
-        ) : domain.status === 'available' ? (
+        {domain.status === 'available' ? (
           <>
             <a href={getAffiliateLink('GODADDY')} target="_blank" rel="noopener noreferrer" className={`${buttonClasses} ${primaryButtonClasses} ${smallSizeClasses}`}>
               Buy Now
             </a>
             <Button onClick={() => onAnalyze(domain.name)} size="sm" variant="secondary">Analyze</Button>
           </>
-        ) : ( // 'taken'
+        ) : ( // 'taken' or 'pending', though 'taken' shouldn't appear in the main list anymore
           <>
-            <span className="text-sm font-semibold text-red-500 dark:text-red-400">Taken</span>
+            <span className="text-sm font-semibold text-red-500 dark:text-red-400 capitalize">{domain.status}</span>
             <Button onClick={() => onAnalyze(domain.name)} size="sm" variant="secondary">Analyze</Button>
           </>
         )}
@@ -57,8 +56,9 @@ const DomainResultCard: React.FC<{ domain: DomainSuggestion, onToggleFavorite: (
 const GeneratePage: React.FC = () => {
   const navigate = useNavigate();
   const { suggestions, setSuggestions, toggleFavorite } = useDomain();
-  const { user, useGeneration } = useUser();
+  const { useGeneration } = useUser();
   const { showToast } = useToast();
+  const { addGenerationToHistory } = useHistory();
 
   const [prompt, setPrompt] = useState('');
   const [style, setStyle] = useState('Brandable');
@@ -90,34 +90,46 @@ const GeneratePage: React.FC = () => {
       return;
     }
     
-    if (!user.isPro && user.generationsLeft <= 0 && !isMore) {
-        showToast('error', "You've run out of free generations. Please upgrade to Pro.");
-        return;
-    }
-    
     isMore ? setIsLoadingMore(true) : setIsLoading(true);
 
     try {
+      // Step 1: Generate domain suggestions from the AI.
       const newSuggestions = await generateDomains(prompt, style, selectedTlds);
-      if (!isMore) {
-          useGeneration();
-      }
-      
-      const updatedSuggestions = newSuggestions.map(s => ({...s, isFavorited: false, status: 'pending' as const}));
+      useGeneration();
 
-      setSuggestions(prev => isMore ? [...prev, ...updatedSuggestions] : updatedSuggestions);
-
-      // Check availability in the background
+      // Step 2: Check availability for all generated domains.
       const domainNames = newSuggestions.map(s => s.name);
-      checkMultipleAvailability(domainNames).then(availabilityResults => {
-          setSuggestions(currentSuggestions => 
-              currentSuggestions.map(s => 
-                  availabilityResults[s.name] !== undefined 
-                      ? { ...s, status: availabilityResults[s.name] ? 'available' : 'taken' }
-                      : s
-              )
-          );
-      });
+      const availabilityResults = await checkMultipleAvailability(domainNames);
+      
+      // Step 3: Filter out taken domains to only show available ones.
+      const availableSuggestions = newSuggestions
+        .filter(s => availabilityResults[s.name])
+        .map(s => ({ ...s, isFavorited: false, status: 'available' as const }));
+
+      if (newSuggestions.length > 0 && availableSuggestions.length === 0) {
+        showToast('info', 'AI generated some domains, but they were all taken. Try generating more or adjusting your prompt!');
+      }
+
+      // Step 4: Log the complete generation attempt to history (including taken domains).
+      if (!isMore) {
+        const allSuggestionsWithStatus = newSuggestions.map(s => ({
+            ...s,
+            isFavorited: false,
+            status: availabilityResults[s.name] ? 'available' : 'taken'
+        } as DomainSuggestion));
+
+        addGenerationToHistory({
+          id: Date.now().toString(),
+          timestamp: Date.now(),
+          prompt,
+          style,
+          tlds: selectedTlds,
+          suggestions: allSuggestionsWithStatus,
+        });
+      }
+
+      // Step 5: Update the UI with only the available domains.
+      setSuggestions(prev => isMore ? [...prev, ...availableSuggestions] : availableSuggestions);
       
     } catch (err) {
       showToast('error', 'AI failed to generate domains. Please try again later.');
@@ -125,7 +137,7 @@ const GeneratePage: React.FC = () => {
     } finally {
       isMore ? setIsLoadingMore(false) : setIsLoading(false);
     }
-  }, [prompt, style, selectedTlds, setSuggestions, user, useGeneration, showToast]);
+  }, [prompt, style, selectedTlds, setSuggestions, useGeneration, showToast, addGenerationToHistory]);
 
 
   const handleManualCheck = async () => {
@@ -150,7 +162,7 @@ const GeneratePage: React.FC = () => {
               <p><strong>1. Enter Your Prompt:</strong> Describe your business, product, or idea in the text area.</p>
               <p><strong>2. Choose a Style:</strong> Select a generation style that fits your brand (e.g., Brandable, Modern).</p>
               <p><strong>3. Select TLDs:</strong> Pick the domain extensions you're interested in (like .com, .ai).</p>
-              <p><strong>4. Generate:</strong> Hit the generate button and let the AI create a list of names for you.</p>
+              <p><strong>4. Generate:</strong> Hit the generate button and let the AI create a list of available names for you.</p>
               <p><strong>5. Analyze & Favorite:</strong> Click 'Analyze' for an in-depth report or the star to save domains to your dashboard.</p>
             </div>
           )}
@@ -191,11 +203,11 @@ const GeneratePage: React.FC = () => {
         </div>
       </Card>
 
-      {isLoading && <div className="text-center p-8">Loading suggestions...</div>}
+      {isLoading && <div className="text-center p-8">Searching for available domains...</div>}
       
       {suggestions.length > 0 && (
         <>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Generated Domains</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Available Domains</h2>
             <div className="space-y-3">
               {suggestions.map((domain, index) => (
                 <DomainResultCard key={`${domain.name}-${index}`} domain={domain} onToggleFavorite={toggleFavorite} onAnalyze={(name) => navigate(`/analyze/${name}`)} />

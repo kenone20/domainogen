@@ -76,7 +76,7 @@ const generateImageMock = async (prompt: string): Promise<string> => {
 export const generateDomains = async (keywords: string, style: string, tlds: string[]): Promise<DomainSuggestion[]> => {
     if (!ai) return generateDomainsMock(keywords, tlds);
 
-    const prompt = `Generate 20 short, brandable domain names for a SaaS product about "${keywords}". The style should be "${style}". Include only domains with the following TLDs: ${tlds.join(', ')}. Return only the domain names.`;
+    const prompt = `Generate a list of 20 creative, unique, and highly brandable domain names for a business focused on "${keywords}". The desired style is "${style}". All domains must use one of the following TLDs: ${tlds.join(', ')}. Prioritize names that are short, memorable, and very likely to be available. Return ONLY a JSON object with a "domains" key, which is an array of objects, each with a "name" key.`;
 
     try {
         const response = await ai.models.generateContent({
