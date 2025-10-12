@@ -137,7 +137,7 @@ export const analyzeDomain = async (domain: string): Promise<DomainAnalysis> => 
     - "estimatedValue": An estimated monetary value in USD (integer). Base this on TLD value, keyword strength, length, memorability, commercial potential, and the provided domain age. For "New" domains, this is potential registration value; for aged domains, it's aftermarket value.
     - "summary": A concise, insightful summary highlighting the domain's primary strengths and weaknesses.
     - "tagline": A creative and brand-appropriate tagline.
-    - "logoPrompt": A detailed, descriptive prompt for an AI image generator (like Imagen) to create a modern, professional logo.
+    - "logoPrompt": A detailed, descriptive prompt for an AI image generator (like Imagen) to create a modern, professional logo. The prompt should result in a simple, vector-style logo suitable for a website or app icon. It should be specific, mentioning a central, clean graphic element. Example: 'minimalist vector logo of a stylized phoenix, clean lines, vibrant gradient, professional, on a white background'.
     - "colorPalette": An array of exactly 4 complementary hex color codes for a brand palette.
     - "risks": A brief sentence on potential downsides (e.g., hard to spell, potential trademark conflicts, too niche).
     - "alternativeSuggestions": An array of 3-5 similar, high-quality domain names that are likely to be available.`;

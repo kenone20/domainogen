@@ -76,29 +76,40 @@ export const checkMultipleAvailability = async (domainNames: string[]): Promise<
 
 export const getDomainAge = async (domainName: string): Promise<string> => {
   console.log(`Fetching age for ${domainName}... (MOCK)`);
-  // Simulate network delay for Whois lookup
   await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 300));
   
   const name = domainName.split('.')[0]?.toLowerCase() || '';
   const tld = `.${domainName.split('.')[1]?.toLowerCase() || ''}`;
 
-  // Simulate age based on perceived value. More valuable domains are older.
-  if (name.length <= 4 && tld === '.com') {
-    const age = Math.floor(Math.random() * 15) + 10; // 10-25 years
-    return `${age} years`;
-  }
-  if (name.length <= 6 || popularTlds.includes(tld)) {
-    if (Math.random() > 0.4) { // 60% chance of being registered
-      const age = Math.floor(Math.random() * 10) + 1; // 1-10 years
-      return `${age} year${age > 1 ? 's' : ''}`;
+  // Rule 1: Premium domains (short, dictionary word, popular TLD) are oldest.
+  if ((name.length <= 5 || commonDictionaryWords.includes(name)) && tld === '.com') {
+    if (Math.random() > 0.2) { // 80% chance it's old
+        const age = Math.floor(Math.random() * 15) + 10; // 10-25 years
+        return `${age} years`;
     }
   }
-  
-  // If it's a long name or less common TLD, it's more likely to be new.
-  if (Math.random() > 0.1) { // 90% chance of being new for less desirable names
+
+  // Rule 2: High-value tech domains (contains tech term, popular TLD).
+  if (commonTechTerms.some(term => name.includes(term)) && popularTlds.includes(tld)) {
+      if (Math.random() > 0.3) { // 70% chance it has age
+          const age = Math.floor(Math.random() * 10) + 3; // 3-12 years
+          return `${age} years`;
+      }
+  }
+
+  // Rule 3: Moderately valuable domains (short-ish or on a decent TLD).
+  if (name.length <= 7 || popularTlds.includes(tld)) {
+      if (Math.random() > 0.5) { // 50% chance it has some age
+        const age = Math.floor(Math.random() * 8) + 1; // 1-8 years
+        return `${age} year${age > 1 ? 's' : ''}`;
+      }
+  }
+
+  // Rule 4: Default case for less valuable/more unique domains. Most likely new.
+  if (Math.random() > 0.15) { // 85% chance of being new
       return "New";
   } else {
-      const age = Math.floor(Math.random() * 5) + 1; // Small chance it has some age
+      const age = Math.floor(Math.random() * 3) + 1; // Small chance it's 1-3 years old
       return `${age} year${age > 1 ? 's' : ''}`;
   }
 };

@@ -11,6 +11,7 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import PdfReport from '../components/ui/PdfReport';
 import { AFFILIATE_LINKS } from '../constants';
+import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 
 const StatCard: React.FC<{
   title: string;
@@ -166,6 +167,16 @@ const AnalyzePage: React.FC = () => {
         setIsGeneratingPdf(false);
     }
   };
+
+  const handleDownloadLogo = () => {
+    if (!logoDataUrl || !domain) return;
+    const link = document.createElement('a');
+    link.href = logoDataUrl;
+    link.download = `${domain.split('.')[0]}-logo.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
   
   if (isLoading) {
     return (
@@ -248,7 +259,7 @@ const AnalyzePage: React.FC = () => {
               </div>
               <div>
                 <h4 className="font-semibold text-gray-800 dark:text-gray-200">Logo Suggestion</h4>
-                <div className="flex items-center gap-4 mt-2">
+                <div className="flex items-start gap-4 mt-2">
                   <div className="w-24 h-24 rounded-lg bg-gray-100 dark:bg-brand-light-gray flex-shrink-0 flex items-center justify-center">
                       {isLogoLoading ? (
                           <svg className="animate-spin h-8 w-8 text-gray-600 dark:text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -259,7 +270,15 @@ const AnalyzePage: React.FC = () => {
                           logoDataUrl && <img src={logoDataUrl} alt="AI generated logo suggestion" className="w-full h-full rounded-lg object-cover"/>
                       )}
                   </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 flex-1"><strong>Logo Prompt:</strong> {logoSuggestion.prompt}</p>
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-600 dark:text-gray-400"><strong>Logo Prompt:</strong> {logoSuggestion.prompt}</p>
+                    {!isLogoLoading && logoDataUrl && (
+                        <Button size="sm" variant="secondary" onClick={handleDownloadLogo} className="mt-2">
+                            <ArrowDownTrayIcon className="w-4 h-4 mr-2" />
+                            Download Logo
+                        </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
