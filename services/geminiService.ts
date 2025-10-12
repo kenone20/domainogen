@@ -47,15 +47,19 @@ const analyzeDomainMock = async (domain: string): Promise<DomainAnalysis> => {
     return {
         domain,
         brandability: 8,
+        brandabilityJustification: "The name is short, catchy, and easy to spell.",
         seoStrength: 7,
+        seoStrengthJustification: "Contains a relevant keyword that aligns with search intent.",
         estimatedValue: Math.floor(Math.random() * 5000) + 500,
         summary: `The domain '${domain}' is highly brandable and memorable. Its inclusion of a strong keyword boosts its SEO potential, making it a valuable asset for a modern tech company.`,
         logoSuggestion: {
-            prompt: `A minimalist logo for a company called '${domain.split('.')[0]}', clean, modern, abstract.`,
+            prompt: `A minimalist logo for a company called '${domain.split('.')[0]}', clean, modern, abstract vector, professional.`,
         },
         colorPalette: ['#4f46e5', '#10b981', '#f59e0b', '#ec4899'],
         tagline: `Unlocking the Future with ${domain.split('.')[0]}.`,
         domainAge: age,
+        alternativeSuggestions: [`${domain.split('.')[0]}ly.co`, `get${domain.split('.')[0]}.app`, `${domain.split('.')[0]}hq.io`],
+        risks: "The name might be too generic in a crowded market, requiring significant branding effort to stand out.",
     };
 };
 
@@ -76,7 +80,15 @@ const generateImageMock = async (prompt: string): Promise<string> => {
 export const generateDomains = async (keywords: string, style: string, tlds: string[]): Promise<DomainSuggestion[]> => {
     if (!ai) return generateDomainsMock(keywords, tlds);
 
-    const prompt = `Generate a list of 20 creative, unique, and highly brandable domain names for a business focused on "${keywords}". The desired style is "${style}". All domains must use one of the following TLDs: ${tlds.join(', ')}. Prioritize names that are short, memorable, and very likely to be available. Return ONLY a JSON object with a "domains" key, which is an array of objects, each with a "name" key.`;
+    const prompt = `Act as a world-class branding expert. Your task is to generate a list of 20 exceptionally creative, unique, and brandable domain names for a business focused on "${keywords}". The desired style is "${style}".
+    Follow these strict rules:
+    1. The names must be short, catchy, and easy to remember.
+    2. Avoid hyphens, numbers, and misspelled common words.
+    3. The names should sound modern, professional, and be easy to pronounce.
+    4. Focus on creating new, invented words (neologisms) or clever combinations of real words (portmanteaus).
+    5. Prioritize names that are highly likely to be available for registration.
+    6. All domains MUST use one of the following TLDs: ${tlds.join(', ')}.
+    Your final output must be ONLY a valid JSON object with a single key "domains", which is an array of objects, each with a "name" key. Do not include any other text, explanation, or markdown formatting.`;
 
     try {
         const response = await ai.models.generateContent({
@@ -112,50 +124,72 @@ export const generateDomains = async (keywords: string, style: string, tlds: str
 export const analyzeDomain = async (domain: string): Promise<DomainAnalysis> => {
     if (!ai) return analyzeDomainMock(domain);
 
-    const prompt = `Provide a detailed analysis for the domain name "${domain}". Include a brandability score (1-10), SEO strength score (1-10), an estimated monetary value, a brief summary, a creative tagline, a DALL-E prompt for a logo, and an array of 4 hex color codes for a brand palette.`;
+    // Fetch domain age first to include it in the analysis prompt
+    const age = await getDomainAge(domain);
+
+    const prompt = `Act as a professional domain name appraiser and branding consultant with 15 years of experience. Provide a comprehensive, data-driven analysis for the domain name "${domain}". The domain's registration age is: "${age}".
+    Your response must be a valid JSON object.
+    
+    - "brandability": A score from 1-10. Justify it based on memorability, length, spelling difficulty, and overall catchiness.
+    - "brandabilityJustification": A short sentence explaining the brandability score.
+    - "seoStrength": A score from 1-10. Justify it based on relevant keywords, TLD authority (.com is high), and brandability. Consider the domain's age in your assessment.
+    - "seoStrengthJustification": A short sentence explaining the SEO strength score.
+    - "estimatedValue": An estimated monetary value in USD (integer). Base this on TLD value, keyword strength, length, memorability, commercial potential, and the provided domain age. For "New" domains, this is potential registration value; for aged domains, it's aftermarket value.
+    - "summary": A concise, insightful summary highlighting the domain's primary strengths and weaknesses.
+    - "tagline": A creative and brand-appropriate tagline.
+    - "logoPrompt": A detailed, descriptive prompt for an AI image generator (like Imagen) to create a modern, professional logo.
+    - "colorPalette": An array of exactly 4 complementary hex color codes for a brand palette.
+    - "risks": A brief sentence on potential downsides (e.g., hard to spell, potential trademark conflicts, too niche).
+    - "alternativeSuggestions": An array of 3-5 similar, high-quality domain names that are likely to be available.`;
 
     try {
-        // Fetch AI analysis and domain age concurrently
-        const [analysisResponse, age] = await Promise.all([
-            ai.models.generateContent({
-                model: "gemini-2.5-flash",
-                contents: prompt,
-                config: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: Type.OBJECT,
-                        properties: {
-                            brandability: { type: Type.INTEGER },
-                            seoStrength: { type: Type.INTEGER },
-                            estimatedValue: { type: Type.INTEGER },
-                            summary: { type: Type.STRING },
-                            tagline: { type: Type.STRING },
-                            logoPrompt: { type: Type.STRING },
-                            colorPalette: {
-                                type: Type.ARRAY,
-                                items: { type: Type.STRING }
-                            },
+        const analysisResponse = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        brandability: { type: Type.INTEGER },
+                        brandabilityJustification: { type: Type.STRING },
+                        seoStrength: { type: Type.INTEGER },
+                        seoStrengthJustification: { type: Type.STRING },
+                        estimatedValue: { type: Type.INTEGER },
+                        summary: { type: Type.STRING },
+                        tagline: { type: Type.STRING },
+                        logoPrompt: { type: Type.STRING },
+                        colorPalette: {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING }
+                        },
+                        risks: { type: Type.STRING },
+                        alternativeSuggestions: {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING }
                         },
                     },
                 },
-            }),
-            getDomainAge(domain)
-        ]);
+            },
+        });
 
         const jsonResponse = JSON.parse(analysisResponse.text);
         return {
             domain,
             brandability: jsonResponse.brandability,
+            brandabilityJustification: jsonResponse.brandabilityJustification,
             seoStrength: jsonResponse.seoStrength,
+            seoStrengthJustification: jsonResponse.seoStrengthJustification,
             estimatedValue: jsonResponse.estimatedValue,
             summary: jsonResponse.summary,
             tagline: jsonResponse.tagline,
             logoSuggestion: {
                 prompt: jsonResponse.logoPrompt,
             },
-
             colorPalette: jsonResponse.colorPalette,
-            domainAge: age,
+            domainAge: age, // Use the age we fetched
+            risks: jsonResponse.risks,
+            alternativeSuggestions: jsonResponse.alternativeSuggestions,
         };
     } catch (error) {
         console.error("Error analyzing domain with Gemini:", error);

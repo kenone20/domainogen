@@ -1,7 +1,9 @@
 export const TLD_OPTIONS = [
     '.com', '.io', '.ai', '.co', '.net', 
     '.org', '.app', '.shop', '.store', '.dev', '.xyz',
-    '.online', '.tech', '.site', '.co.uk', '.ca', '.de'
+    '.online', '.tech', '.site', '.gg', '.me', '.ly',
+    '.so', '.to', '.info', '.biz', '.pro', '.agency', 
+    '.studio', '.inc', '.link', '.live', '.ca', '.de'
 ];
 
 export const AFFILIATE_LINKS = {

@@ -7,7 +7,9 @@ export interface DomainSuggestion {
 export interface DomainAnalysis {
   domain: string;
   brandability: number;
+  brandabilityJustification: string;
   seoStrength: number;
+  seoStrengthJustification: string;
   estimatedValue: number;
   summary: string;
   logoSuggestion: {
@@ -17,6 +19,8 @@ export interface DomainAnalysis {
   colorPalette: string[];
   tagline: string;
   domainAge: string;
+  alternativeSuggestions: string[];
+  risks: string;
 }
 
 export interface UserProfile {

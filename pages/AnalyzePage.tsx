@@ -183,7 +183,7 @@ const AnalyzePage: React.FC = () => {
     return <p className="text-center">No domain analysis available. Please generate and analyze a domain first.</p>;
   }
   
-  const { brandability, seoStrength, estimatedValue, summary, logoSuggestion, colorPalette, tagline, domainAge } = currentAnalysis;
+  const { brandability, brandabilityJustification, seoStrength, seoStrengthJustification, estimatedValue, summary, logoSuggestion, colorPalette, tagline, domainAge, risks, alternativeSuggestions } = currentAnalysis;
   const namecheapLink = AFFILIATE_LINKS.NAMECHEAP.replace('{{domain}}', domain);
 
   return (
@@ -199,8 +199,8 @@ const AnalyzePage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <StatCard title="Brandability" value={`${brandability}/10`} description="How memorable and catchy the name is." score={brandability} />
-            <StatCard title="SEO Strength" value={`${seoStrength}/10`} description="Potential for organic search traffic." score={seoStrength} />
+            <StatCard title="Brandability" value={`${brandability}/10`} description={brandabilityJustification} score={brandability} />
+            <StatCard title="SEO Strength" value={`${seoStrength}/10`} description={seoStrengthJustification} score={seoStrength} />
             <StatCard title="Domain Age" value={domainAge} description="How long the domain has been registered." />
             <StatCard title="Estimated Value" value={`$${estimatedValue.toLocaleString()}`} description="AI-powered market value appraisal." />
         </div>
@@ -210,6 +210,26 @@ const AnalyzePage: React.FC = () => {
           <p className="text-gray-700 dark:text-gray-300">{summary}</p>
         </Card>
         
+        {risks && (
+          <Card className="mb-8">
+            <h3 className="text-xl font-semibold mb-2 text-yellow-500 dark:text-yellow-400">Risks & Considerations</h3>
+            <p className="text-gray-700 dark:text-gray-300">{risks}</p>
+          </Card>
+        )}
+        
+        {alternativeSuggestions && alternativeSuggestions.length > 0 && (
+          <Card className="mb-8">
+            <h3 className="text-xl font-semibold mb-2 text-green-500 dark:text-green-400">Alternative Suggestions</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mt-4">
+              {alternativeSuggestions.map((alt, index) => (
+                <div key={`${alt}-${index}`} className="text-center font-mono p-3 bg-gray-100 dark:bg-brand-gray/80 rounded-md text-gray-800 dark:text-gray-200">
+                  {alt}
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <Card>
             <h3 className="text-xl font-semibold mb-4 text-indigo-500 dark:text-indigo-400">Branding Kit</h3>
