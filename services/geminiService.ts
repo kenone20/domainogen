@@ -80,15 +80,23 @@ const generateImageMock = async (prompt: string): Promise<string> => {
 export const generateDomains = async (keywords: string, style: string, tlds: string[]): Promise<DomainSuggestion[]> => {
     if (!ai) return generateDomainsMock(keywords, tlds);
 
-    const prompt = `Act as a world-class branding expert. Your task is to generate a list of 20 exceptionally creative, unique, and brandable domain names for a business focused on "${keywords}". The desired style is "${style}".
-    Follow these strict rules:
-    1. The names must be short, catchy, and easy to remember.
-    2. Avoid hyphens, numbers, and misspelled common words.
-    3. The names should sound modern, professional, and be easy to pronounce.
-    4. Focus on creating new, invented words (neologisms) or clever combinations of real words (portmanteaus).
-    5. Prioritize names that are highly likely to be available for registration.
-    6. All domains MUST use one of the following TLDs: ${tlds.join(', ')}.
-    Your final output must be ONLY a valid JSON object with a single key "domains", which is an array of objects, each with a "name" key. Do not include any other text, explanation, or markdown formatting.`;
+    const prompt = `You are a professional brand naming assistant. Generate 20 unique, short, and catchy domain name ideas based on this concept: "${keywords}". The desired branding style is "${style}".
+
+Strict Rules:
+1. Each name must be 5-12 letters long (excluding the TLD).
+2. Absolutely no numbers or hyphens.
+3. Use only the following TLDs: ${tlds.join(', ')}.
+4. Ensure the names sound professional, are brandable, and are suitable for startups. Avoid weird combinations.
+5. Do not return duplicate domain names.
+
+Return the result as a valid JSON array of objects. Do not wrap it in a parent object or include any other text or markdown.
+
+Example format:
+[
+  { "domain": "innovate.io" },
+  { "domain": "fluxify.ai" }
+]
+`;
 
     try {
         const response = await ai.models.generateContent({
@@ -97,24 +105,33 @@ export const generateDomains = async (keywords: string, style: string, tlds: str
             config: {
                 responseMimeType: "application/json",
                 responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        domains: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    name: { type: Type.STRING },
-                                },
-                            },
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            domain: { type: Type.STRING },
                         },
+                        required: ['domain'],
                     },
                 },
             },
         });
         
         const jsonResponse = JSON.parse(response.text);
-        return jsonResponse.domains.map((d: { name: string }) => ({ name: d.name, isFavorited: false, status: 'pending' as const }));
+
+        if (!Array.isArray(jsonResponse)) {
+          console.error("AI response is not a JSON array:", jsonResponse);
+          return generateDomainsMock(keywords, tlds);
+        }
+        
+        // Extract, clean, and deduplicate domains
+        let domains = jsonResponse
+            .map((d: { domain: string }) => d.domain)
+            .filter((domain: string) => domain && !/\d/.test(domain)); // Filter out null/undefined and domains with numbers
+
+        domains = [...new Set(domains)]; // Remove duplicates
+
+        return domains.map((name: string) => ({ name, isFavorited: false, status: 'pending' as const }));
     } catch (error) {
         console.error("Error generating domains with Gemini:", error);
         return generateDomainsMock(keywords, tlds); // Fallback to mock on error

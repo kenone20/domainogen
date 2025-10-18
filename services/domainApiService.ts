@@ -16,8 +16,8 @@ const commonDictionaryWords = [
 
 export const checkAvailability = async (domainName: string): Promise<boolean> => {
   console.log(`Checking availability for ${domainName}... (MOCK)`);
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 250 + Math.random() * 300));
+  // Simulate a faster, real-time-like network delay.
+  await new Promise(resolve => setTimeout(resolve, 50 + Math.random() * 100));
 
   const name = domainName.split('.')[0]?.toLowerCase() || '';
   const tld = `.${domainName.split('.')[1]?.toLowerCase() || ''}`;
@@ -79,50 +79,93 @@ export const checkMultipleAvailability = async (domainNames: string[]): Promise<
   return results;
 };
 
+// This mock function simulates fetching a domain's age with realistic, nuanced logic
+// to improve the accuracy of the AI analysis.
 export const getDomainAge = async (domainName: string): Promise<string> => {
   console.log(`Fetching age for ${domainName}... (MOCK)`);
   await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 300));
   
   const name = domainName.split('.')[0]?.toLowerCase() || '';
   const tld = `.${domainName.split('.')[1]?.toLowerCase() || ''}`;
+  const nameLength = name.length;
 
-  // Rule 1: Elite, "blue-chip" .com domains (single dictionary word). Almost guaranteed to be old.
-  if (tld === '.com' && commonDictionaryWords.includes(name)) {
-      if (Math.random() > 0.05) { // 95% chance it's very old
-          const age = Math.floor(Math.random() * 10) + 15; // 15-25 years
-          return `${age} years`;
+  // --- .com domains (most valuable and oldest) ---
+  if (tld === '.com') {
+    // Rule 1: Elite, single dictionary word .coms are almost always very old.
+    if (commonDictionaryWords.includes(name)) {
+      if (Math.random() > 0.05) { // 95% chance it's from the dot-com era
+        const age = Math.floor(Math.random() * 11) + 18; // 18-28 years
+        return `${age} years`;
       }
-  }
+      const age = Math.floor(Math.random() * 6) + 10; // 10-15 years
+      return `${age} years`;
+    }
 
-  // Rule 2: Very high-value .com domains (short, 4-5 letters).
-  if (tld === '.com' && name.length <= 5) {
-      if (Math.random() > 0.15) { // 85% chance it's old
-          const age = Math.floor(Math.random() * 15) + 8; // 8-23 years
-          return `${age} years`;
+    // Rule 2: Very short .coms are also extremely old.
+    if (nameLength <= 4) {
+      if (Math.random() > 0.02) { // 98% chance of being 16-25 years old
+         const age = Math.floor(Math.random() * 10) + 16;
+         return `${age} years`;
       }
-  }
-
-  // Rule 3: High-value tech domains (contains tech term, popular TLD).
-  if (commonTechTerms.some(term => name.includes(term)) && popularTlds.includes(tld)) {
-      if (Math.random() > 0.3) { // 70% chance it has age
-          const age = Math.floor(Math.random() * 10) + 3; // 3-12 years
-          return `${age} years`;
+      const age = Math.floor(Math.random() * 8) + 5; // 5-12 years (simulates a dropped domain)
+      return `${age} years`;
+    }
+    if (nameLength === 5) {
+      if (Math.random() > 0.10) { // 90% chance of being 10-20 years old
+        const age = Math.floor(Math.random() * 11) + 10;
+        return `${age} years`;
       }
-  }
+      const age = Math.floor(Math.random() * 6) + 3; // 3-8 years
+      return `${age} years`;
+    }
 
-  // Rule 4: Moderately valuable domains (short-ish name OR on a popular TLD).
-  if (name.length <= 8 || popularTlds.includes(tld)) {
-      if (Math.random() > 0.5) { // 50% chance it has some age
-        const age = Math.floor(Math.random() * 7) + 1; // 1-7 years
+    // Rule 3: .coms with tech terms often have significant age.
+    if (commonTechTerms.some(term => name.includes(term))) {
+         if (Math.random() > 0.25) { // 75% chance it has age
+            const age = Math.floor(Math.random() * 13) + 4; // 4-16 years
+            return `${age} years`;
+        }
+    }
+    
+    // Rule 4: General .coms still have a good chance of being aged.
+     if (Math.random() > 0.4) { // 60% chance of having some age
+        const age = Math.floor(Math.random() * 10) + 2; // 2-11 years
         return `${age} year${age > 1 ? 's' : ''}`;
-      }
+     }
   }
 
-  // Rule 5: Default case for less valuable/more unique/longer domains. Most likely new.
-  if (Math.random() > 0.1) { // 90% chance of being new
-      return "New";
-  } else {
-      const age = Math.floor(Math.random() * 2) + 1; // Small (10%) chance it's 1-2 years old
-      return `${age} year${age > 1 ? 's' : ''}`;
+  // --- .ai and .io domains (newer tech gold rush) ---
+  if (tld === '.ai' || tld === '.io') {
+    if (commonTechTerms.some(term => name.includes(term)) || nameLength <= 5) {
+        if (Math.random() > 0.2) { // 80% chance it's registered
+            const age = Math.floor(Math.random() * 7) + 2; // 2-8 years
+            return `${age} years`;
+        }
+    }
+    if (Math.random() > 0.6) { // 40% chance for other .ai/.io names
+        const age = Math.floor(Math.random() * 5) + 1; // 1-5 years
+        return `${age} year${age > 1 ? 's' : ''}`;
+    }
   }
+
+  // --- Other popular new TLDs (.co, .dev, .app) ---
+  if (['.co', '.dev', 'app'].includes(tld)) {
+    if (Math.random() > 0.5) { // 50% chance it has some age
+        const age = Math.floor(Math.random() * 4) + 1; // 1-4 years
+        return `${age} year${age > 1 ? 's' : ''}`;
+    }
+  }
+
+  // --- Default Case: Newer TLDs or long/unique names, most are new ---
+  if (Math.random() > 0.15) { // 85% chance of being new
+    if (Math.random() > 0.9) { // Small chance of being a few months old
+        const months = Math.floor(Math.random() * 8) + 3;
+        return `${months} months`;
+    }
+    return "New";
+  }
+  
+  // 15% chance of being 1-2 years old
+  const age = Math.floor(Math.random() * 2) + 1;
+  return `${age} year${age > 1 ? 's' : ''}`;
 };

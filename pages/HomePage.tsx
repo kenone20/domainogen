@@ -21,13 +21,20 @@ const HomePage: React.FC = () => {
       <p className="max-w-2xl mx-auto mt-6 text-lg md:text-xl text-gray-600 dark:text-gray-300 animate-fade-in" style={{ animationDelay: '0.2s' }}>
         AI-generated, SEO-analyzed, and ready to launch. Turn your idea into a brand with DomainOgen.
       </p>
-      <div className="mt-10 animate-fade-in" style={{ animationDelay: '0.4s' }}>
+      <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in" style={{ animationDelay: '0.4s' }}>
         <Button 
           variant="primary" 
-          className="px-8 py-4 text-lg"
+          className="px-8 py-4 text-lg w-full sm:w-auto"
           onClick={() => navigate('/generate')}
         >
           Generate Domains Free
+        </Button>
+        <Button 
+          variant="secondary" 
+          className="px-8 py-4 text-lg w-full sm:w-auto"
+          onClick={() => navigate('/generate')}
+        >
+          Analyze a Domain
         </Button>
       </div>
     </div>

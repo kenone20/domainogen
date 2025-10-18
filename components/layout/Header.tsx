@@ -9,11 +9,11 @@ const NavLink: React.FC<{ to: string; children: React.ReactNode }> = ({ to, chil
   return (
     <Link
       to={to}
-      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-brand-dark focus:ring-indigo-500 ${
         isActive 
-          ? 'bg-gray-200 dark:bg-brand-gray text-gray-900 dark:text-white' 
-          : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-brand-light-gray hover:text-gray-900 dark:hover:text-white'
-      } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-brand-dark focus:ring-indigo-500`}
+          ? 'bg-gradient-to-r from-indigo-500 to-cyan-500 text-white shadow-lg' 
+          : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-brand-light-gray'
+      }`}
     >
       {children}
     </Link>
@@ -34,7 +34,7 @@ const Header: React.FC = () => {
                             </span>
                         </Link>
                         <nav className="hidden md:block ml-10">
-                            <div className="flex items-baseline space-x-4">
+                            <div className="flex items-baseline space-x-6">
                                 <NavLink to="/generate">Generate</NavLink>
                                 <NavLink to="/pricing">Pricing</NavLink>
                                 <NavLink to="/dashboard">Dashboard</NavLink>
