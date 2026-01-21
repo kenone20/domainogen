@@ -21,6 +21,9 @@ export interface DomainAnalysis {
   domainAge: string;
   alternativeSuggestions: string[];
   risks: string;
+  // New meta fields
+  metaDescription: string;
+  metaKeywords: string;
 }
 
 export interface UserProfile {

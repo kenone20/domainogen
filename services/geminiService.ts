@@ -3,22 +3,6 @@ import type { DomainSuggestion, DomainAnalysis } from '../types';
 import { getDomainAge } from './domainApiService';
 
 // --- API Key Configuration ---
-// IMPORTANT: In a real application, use environment variables and a backend proxy.
-// Never expose API keys on the client-side.
-//
-// Required for AI features:
-// const GEMINI_API_KEY = process.env.API_KEY;
-//
-// For real domain availability checks (replace mock service):
-// const DOMAINR_API_KEY = '...';
-// const WHOISXML_API_KEY = '...';
-//
-// For affiliate links:
-// const NAMECHEAP_API_USER = '...';
-// const NAMECHEAP_API_KEY = '...';
-// const AFFILIATE_ID_GOODADDY = '...';
-// ---
-
 const API_KEY = process.env.API_KEY;
 
 if (!API_KEY) {
@@ -60,12 +44,13 @@ const analyzeDomainMock = async (domain: string): Promise<DomainAnalysis> => {
         domainAge: age,
         alternativeSuggestions: [`${domain.split('.')[0]}ly.co`, `get${domain.split('.')[0]}.app`, `${domain.split('.')[0]}hq.io`],
         risks: "The name might be too generic in a crowded market, requiring significant branding effort to stand out.",
+        metaDescription: `Discover the future of innovation with ${domain}. Leading the way in modern solutions and digital excellence.`,
+        metaKeywords: `${domain.split('.')[0]}, tech startup, digital brand, brandable domain`,
     };
 };
 
 const generateImageMock = async (prompt: string): Promise<string> => {
     console.log("Using mock image generation service for prompt:", prompt);
-    // Fetch a placeholder image, convert to blob, then to base64 to mimic the API response type
     const response = await fetch(`https://picsum.photos/seed/${prompt.slice(0, 15)}/400`);
     const blob = await response.blob();
     return new Promise((resolve, reject) => {
@@ -75,7 +60,6 @@ const generateImageMock = async (prompt: string): Promise<string> => {
         reader.readAsDataURL(blob);
     });
 };
-
 
 export const generateDomains = async (keywords: string, style: string, tlds: string[]): Promise<DomainSuggestion[]> => {
     if (!ai) return generateDomainsMock(keywords, tlds);
@@ -100,7 +84,7 @@ Example format:
 
     try {
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-flash-preview",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -124,24 +108,22 @@ Example format:
           return generateDomainsMock(keywords, tlds);
         }
         
-        // Extract, clean, and deduplicate domains
         let domains = jsonResponse
             .map((d: { domain: string }) => d.domain)
-            .filter((domain: string) => domain && !/\d/.test(domain)); // Filter out null/undefined and domains with numbers
+            .filter((domain: string) => domain && !/\d/.test(domain));
 
-        domains = [...new Set(domains)]; // Remove duplicates
+        domains = [...new Set(domains)];
 
         return domains.map((name: string) => ({ name, isFavorited: false, status: 'pending' as const }));
     } catch (error) {
         console.error("Error generating domains with Gemini:", error);
-        return generateDomainsMock(keywords, tlds); // Fallback to mock on error
+        return generateDomainsMock(keywords, tlds);
     }
 };
 
 export const analyzeDomain = async (domain: string): Promise<DomainAnalysis> => {
     if (!ai) return analyzeDomainMock(domain);
 
-    // Fetch domain age first to include it in the analysis prompt
     const age = await getDomainAge(domain);
 
     const prompt = `Act as a seasoned domain name appraiser and digital asset strategist. Your task is to conduct a rigorous, professional analysis of the domain "${domain}", treating it as a significant business investment. The domain's registration age is "${age}".
@@ -155,20 +137,23 @@ export const analyzeDomain = async (domain: string): Promise<DomainAnalysis> => 
     Your response MUST be a valid JSON object with the following strict structure:
 
     - "brandability": A score from 1-10.
-    - "brandabilityJustification": A detailed justification for the brandability score. Directly reference its memorability, length, and potential for brand recognition.
+    - "brandabilityJustification": A detailed justification for the brandability score.
     - "seoStrength": A score from 1-10.
-    - "seoStrengthJustification": A detailed justification for the SEO score. Your reasoning must explicitly incorporate the domain's age, keyword relevance, and the TLD's authority in search engine rankings.
-    - "estimatedValue": An estimated monetary value in USD (integer). This valuation must be primarily driven by the domain's age and TLD, followed by its commercial keyword potential. An older domain with strong keywords is exponentially more valuable.
-    - "summary": A professional summary evaluating the domain as a digital asset, balancing its strengths against its weaknesses.
-    - "tagline": A creative, brand-appropriate tagline.
-    - "logoPrompt": A highly descriptive prompt for an AI image generator to create a modern, minimalist, vector-style logo suitable for a favicon. Describe a simple graphic element and incorporate the generated color palette. Example: 'a clean, modern vector logo of an abstract geometric bird in flight, using shades of indigo and cyan, minimalist design, sharp lines, on a pure white background'.
+    - "seoStrengthJustification": A detailed justification for the SEO score.
+    - "estimatedValue": An estimated monetary value in USD (integer).
+    - "summary": A professional summary.
+    - "tagline": A creative tagline.
+    - "logoPrompt": A highly descriptive prompt for an AI image generator.
     - "colorPalette": An array of exactly 4 complementary hex color codes.
-    - "risks": A mandatory sentence identifying at least one potential risk (e.g., 'The .co TLD can be mistaken for .com by users,' 'The name is difficult to spell,' 'Potential trademark conflicts with existing brands'). This field cannot be empty.
-    - "alternativeSuggestions": An array of 3-5 similar, high-quality domain names.`;
+    - "risks": A mandatory risk assessment sentence.
+    - "alternativeSuggestions": An array of 3-5 similar domain names.
+    - "metaDescription": A compelling SEO meta description (150-160 characters) for a website launched on this domain.
+    - "metaKeywords": A comma-separated list of 5-8 relevant SEO keywords for this domain.`;
 
     try {
         const analysisResponse = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            // Fix: Use gemini-3-pro-preview for complex appraisal tasks as per guidelines.
+            model: "gemini-3-pro-preview",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -192,6 +177,8 @@ export const analyzeDomain = async (domain: string): Promise<DomainAnalysis> => 
                             type: Type.ARRAY,
                             items: { type: Type.STRING }
                         },
+                        metaDescription: { type: Type.STRING },
+                        metaKeywords: { type: Type.STRING },
                     },
                 },
             },
@@ -211,13 +198,15 @@ export const analyzeDomain = async (domain: string): Promise<DomainAnalysis> => 
                 prompt: jsonResponse.logoPrompt,
             },
             colorPalette: jsonResponse.colorPalette,
-            domainAge: age, // Use the age we fetched
+            domainAge: age,
             risks: jsonResponse.risks,
             alternativeSuggestions: jsonResponse.alternativeSuggestions,
+            metaDescription: jsonResponse.metaDescription,
+            metaKeywords: jsonResponse.metaKeywords,
         };
     } catch (error) {
         console.error("Error analyzing domain with Gemini:", error);
-        return analyzeDomainMock(domain); // Fallback to mock on error
+        return analyzeDomainMock(domain);
     }
 };
 
@@ -225,22 +214,35 @@ export const generateImage = async (prompt: string): Promise<string> => {
     if (!ai) return generateImageMock(prompt);
 
     try {
-        const response = await ai.models.generateImages({
-            model: 'imagen-4.0-generate-001',
-            prompt: prompt,
+        // Fix: Use gemini-2.5-flash-image with generateContent for default image generation as per guidelines.
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-image',
+            contents: {
+                parts: [
+                    {
+                        text: prompt,
+                    },
+                ],
+            },
             config: {
-              numberOfImages: 1,
-              outputMimeType: 'image/png',
-              aspectRatio: '1:1',
+                imageConfig: {
+                    aspectRatio: "1:1",
+                },
             },
         });
 
-        if (response.generatedImages && response.generatedImages.length > 0) {
-            return response.generatedImages[0].image.imageBytes;
+        // Fix: Iterate through all parts to find the image part, do not assume it is the first part.
+        for (const candidate of response.candidates || []) {
+            for (const part of candidate.content.parts) {
+                if (part.inlineData) {
+                    return part.inlineData.data;
+                }
+            }
         }
+        
         throw new Error("No image was generated by the API.");
     } catch (error) {
         console.error("Error generating image with Gemini:", error);
-        return generateImageMock(prompt); // Fallback to mock on error
+        return generateImageMock(prompt);
     }
 };

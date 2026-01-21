@@ -9,6 +9,7 @@ import { checkMultipleAvailability } from '../services/domainApiService';
 import type { DomainSuggestion } from '../types';
 import { TLD_OPTIONS, AFFILIATE_LINKS } from '../constants';
 
+import SEO from '../components/layout/SEO';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import { StarIcon as StarIconSolid, ChevronDownIcon } from '@heroicons/react/24/solid';
@@ -147,8 +148,6 @@ const GeneratePage: React.FC = () => {
     }
     
     setIsManualChecking(true);
-    // Navigate directly to the analysis page for a full report.
-    // The analysis page will handle loading and fetching all data.
     navigate(`/analyze/${domainToCheck}`);
   };
 
@@ -157,6 +156,10 @@ const GeneratePage: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto">
+      <SEO 
+        title="AI Domain Generator" 
+        description="Input your business idea and let our AI generate the perfect available domain name for you. Supports .com, .io, .ai, and more."
+      />
       <Card className="mb-8">
         <div className="mb-4">
           <button onClick={() => setIsHowToOpen(!isHowToOpen)} className="flex items-center justify-between w-full text-left text-lg font-semibold text-gray-800 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-brand-gray focus:ring-indigo-500 rounded-md p-1">
